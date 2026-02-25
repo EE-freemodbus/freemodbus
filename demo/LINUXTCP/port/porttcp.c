@@ -220,6 +220,12 @@ xMBPortTCPPool( void )
         {
             if( FD_ISSET( xClientSocket, &fread ) )
             {
+                if (usTCPFrameBytesLeft > MB_TCP_BUF_SIZE - usTCPBufPos)  // check PDU size
+                {
+                    close(xClientSocket);
+                    xClientSocket = INVALID_SOCKET;
+                    return TRUE;
+                }
                 if( ( ( ret =
                         recv( xClientSocket, &aucTCPBuf[usTCPBufPos], usTCPFrameBytesLeft,
                               0 ) ) == SOCKET_ERROR ) || ( !ret ) )
@@ -236,6 +242,12 @@ xMBPortTCPPool( void )
                      * unit identifier. */
                     usLength = aucTCPBuf[MB_TCP_LEN] << 8U;
                     usLength |= aucTCPBuf[MB_TCP_LEN + 1];
+                    if (usLength < 2) // check if PDU > min length
+                    {
+                        close( xClientSocket );
+                        xClientSocket = INVALID_SOCKET;
+                        return TRUE;
+                    }
 
                     /* Is the frame already complete. */
                     if( usTCPBufPos < ( MB_TCP_UID + usLength ) )
